@@ -1,73 +1,59 @@
-# React + TypeScript + Vite
+# Creator History — Outil de world-building narratif
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Application web de gestion d'univers fictifs : personnages, lieux, factions, histoires et bien plus, le tout stocké localement dans le navigateur.
 
-Currently, two official plugins are available:
+## Fonctionnalites
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Gestion multi-univers** : creez autant d'univers que vous souhaitez, chacun independant avec ses propres donnees.
+- **Elements narratifs** : chaque univers contient 6 types d'elements configurables :
+  - Personnages, Factions, Lieux, Objets, Animaux, Monstres
+- **Attributs personnalisables** : ajoutez, reordonnez et supprimez des attributs (texte, zone de texte, nombre, date, liste, image) pour chaque type d'element.
+- **Histoires et chapitres** : redigez des recits structures en chapitres, avec images et description.
+- **Images** : chaque univers, element et histoire peut avoir une image de couverture (stockee en base64).
+- **Export / Import ZIP** : sauvegardez toutes vos donnees dans un fichier `.zip` et reimportez-les a tout moment.
+- **Persistence locale** : les donnees sont sauvegardees automatiquement dans le `localStorage` du navigateur, aucun serveur requis.
 
-## React Compiler
+## Stack technique
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+| Technologie | Role |
+|---|---|
+| React 19 | UI |
+| TypeScript | Typage statique |
+| React Router DOM 7 | Navigation SPA |
+| JSZip | Export / import ZIP |
+| Vite | Bundler et serveur de dev |
 
-## Expanding the ESLint configuration
+## Structure du projet
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```
+src/
+  components/       # Composants reutilisables (Layout, ImageUpload, AttributeField)
+  pages/            # Pages de l'application
+  store/            # Contexte global (StoreContext) et templates par defaut
+  types/            # Types TypeScript partages
+  utils/            # Utilitaires (export/import ZIP)
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Installation et lancement
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev
 ```
+
+L'application sera disponible sur `http://localhost:5173`.
+
+## Scripts disponibles
+
+| Commande | Description |
+|---|---|
+| `npm run dev` | Serveur de developpement avec HMR |
+| `npm run build` | Build de production |
+| `npm run preview` | Previsualiser le build de production |
+| `npm run lint` | Analyse statique ESLint |
+
+## Donnees et persistence
+
+Toutes les donnees sont stockees dans le `localStorage` sous la cle `worldbuilder_data`. Aucune donnee n'est envoyee vers un serveur.
+
+Pour sauvegarder ou transferer vos donnees, utilisez la fonction **Export ZIP** disponible dans les parametres de l'application. Le fichier genere contient un `data.json` avec l'integralite de vos univers.
