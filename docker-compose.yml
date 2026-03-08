@@ -1,0 +1,27 @@
+services:
+  # === Développement ===
+  app-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "5173:5173"
+    volumes:
+      - .:/app
+      - /app/node_modules  # évite d'écraser node_modules du container
+    environment:
+      - NODE_ENV=development
+    profiles:
+      - dev
+
+  # === Production ===
+  app-prod:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    environment:
+      - NODE_ENV=production
+    profiles:
+      - prod
