@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useStore } from '../store/StoreContext'
-import { ELEMENT_CONFIG, ELEMENT_TYPES } from '../types'
+import { ELEMENT_CONFIG, getActiveBuiltinTypes } from '../types'
 
 export default function UniversePage() {
   const { id } = useParams<{ id: string }>()
@@ -10,7 +10,10 @@ export default function UniversePage() {
   const universe = data.universes.find(u => u.id === id)
   if (!universe) return <div className="page"><p>Univers introuvable.</p></div>
 
-  const totalElements = ELEMENT_TYPES.reduce((acc, t) => acc + (universe.elements[t]?.length ?? 0), 0)
+  const activeBuiltin = getActiveBuiltinTypes(universe)
+  const totalElements =
+    activeBuiltin.reduce((acc, t) => acc + (universe.elements[t]?.length ?? 0), 0) +
+    universe.customCategories.reduce((acc, c) => acc + (universe.elements[c.id]?.length ?? 0), 0)
 
   return (
     <div className="page">
@@ -33,12 +36,23 @@ export default function UniversePage() {
             <span className="dashboard-card-count">{universe.stories.length}</span>
           </div>
         </div>
-        {ELEMENT_TYPES.map(type => (
+
+        {activeBuiltin.map(type => (
           <div key={type} className="dashboard-card" onClick={() => navigate(`/universe/${id}/${type}`)}>
             <div className="dashboard-card-icon">{ELEMENT_CONFIG[type].icon}</div>
             <div className="dashboard-card-info">
               <strong>{ELEMENT_CONFIG[type].labelPlural}</strong>
               <span className="dashboard-card-count">{universe.elements[type]?.length ?? 0}</span>
+            </div>
+          </div>
+        ))}
+
+        {universe.customCategories.map(cat => (
+          <div key={cat.id} className="dashboard-card" onClick={() => navigate(`/universe/${id}/${cat.id}`)}>
+            <div className="dashboard-card-icon">{cat.icon}</div>
+            <div className="dashboard-card-info">
+              <strong>{cat.labelPlural}</strong>
+              <span className="dashboard-card-count">{universe.elements[cat.id]?.length ?? 0}</span>
             </div>
           </div>
         ))}

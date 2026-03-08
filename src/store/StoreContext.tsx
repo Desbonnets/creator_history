@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import type { ReactNode } from 'react'
-import type { AppData, Universe, Story, Chapter, GenericElement, AttributeDef, ElementType } from '../types'
+import type { AppData, Universe, Story, Chapter, GenericElement, AttributeDef, CustomCategoryDef, ElementType } from '../types'
 import { DEFAULT_TEMPLATES } from './defaultTemplates'
 
 const STORAGE_KEY = 'worldbuilder_data'
@@ -14,7 +14,16 @@ const emptyData: AppData = { universes: [], version: '1.0.0' }
 function load(): AppData {
   try {
     const s = localStorage.getItem(STORAGE_KEY)
-    return s ? JSON.parse(s) : emptyData
+    if (!s) return emptyData
+    const d: AppData = JSON.parse(s)
+    // migration
+    d.universes = d.universes.map(u => ({
+      ...u,
+      customCategories: u.customCategories ?? [],
+      disabledTypes: u.disabledTypes ?? [],
+      typeOverrides: u.typeOverrides ?? {},
+    }))
+    return d
   } catch {
     return emptyData
   }
@@ -32,13 +41,18 @@ interface Ctx {
   updateChapter(universeId: string, storyId: string, chapterId: string, updates: Partial<Chapter>): void
   deleteChapter(universeId: string, storyId: string, chapterId: string): void
   moveChapter(universeId: string, storyId: string, from: number, to: number): void
-  createElement(universeId: string, type: ElementType, values: Record<string, string>): GenericElement
-  updateElement(universeId: string, type: ElementType, elementId: string, values: Record<string, string>): void
-  deleteElement(universeId: string, type: ElementType, elementId: string): void
-  addAttribute(universeId: string, type: ElementType, attr: Omit<AttributeDef, 'id'>): AttributeDef
-  updateAttribute(universeId: string, type: ElementType, attrId: string, updates: Partial<Omit<AttributeDef, 'id' | 'required'>>): void
-  removeAttribute(universeId: string, type: ElementType, attrId: string): void
-  moveAttribute(universeId: string, type: ElementType, from: number, to: number): void
+  createElement(universeId: string, type: string, values: Record<string, string>): GenericElement
+  updateElement(universeId: string, type: string, elementId: string, values: Record<string, string>): void
+  deleteElement(universeId: string, type: string, elementId: string): void
+  addAttribute(universeId: string, type: string, attr: Omit<AttributeDef, 'id'>): AttributeDef
+  updateAttribute(universeId: string, type: string, attrId: string, updates: Partial<Omit<AttributeDef, 'id' | 'required'>>): void
+  removeAttribute(universeId: string, type: string, attrId: string): void
+  moveAttribute(universeId: string, type: string, from: number, to: number): void
+  addCategory(universeId: string, def: Omit<CustomCategoryDef, 'id'>): CustomCategoryDef
+  updateCategory(universeId: string, categoryId: string, updates: Partial<Omit<CustomCategoryDef, 'id'>>): void
+  deleteCategory(universeId: string, categoryId: string): void
+  disableBuiltinType(universeId: string, type: ElementType): void
+  overrideBuiltinType(universeId: string, type: ElementType, updates: { label?: string; labelPlural?: string; icon?: string }): void
   importData(d: AppData): void
 }
 
@@ -64,6 +78,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const u: Universe = {
       id: genId(), name, description, image,
       stories: [],
+      customCategories: [],
+      disabledTypes: [],
+      typeOverrides: {},
       templates: structuredClone(DEFAULT_TEMPLATES),
       elements: { character: [], faction: [], location: [], item: [], animal: [], monster: [] },
       relations: [],
@@ -120,51 +137,111 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     })
 
   // --- Éléments ---
-  const mapElements = (uid: string, type: ElementType, fn: (list: GenericElement[]) => GenericElement[]) =>
+  const mapElements = (uid: string, type: string, fn: (list: GenericElement[]) => GenericElement[]) =>
     mapUniverse(uid, u => ({
       ...u,
       elements: { ...u.elements, [type]: fn(u.elements[type] ?? []) },
       updatedAt: now(),
     }))
 
-  const createElement = (uid: string, type: ElementType, values: Record<string, string>): GenericElement => {
+  const createElement = (uid: string, type: string, values: Record<string, string>): GenericElement => {
     const el: GenericElement = { id: genId(), values, createdAt: now(), updatedAt: now() }
     mapElements(uid, type, list => [...list, el])
     return el
   }
 
-  const updateElement = (uid: string, type: ElementType, eid: string, values: Record<string, string>) =>
+  const updateElement = (uid: string, type: string, eid: string, values: Record<string, string>) =>
     mapElements(uid, type, list => list.map(el => el.id === eid ? { ...el, values, updatedAt: now() } : el))
 
-  const deleteElement = (uid: string, type: ElementType, eid: string) =>
+  const deleteElement = (uid: string, type: string, eid: string) =>
     mapElements(uid, type, list => list.filter(el => el.id !== eid))
 
   // --- Templates ---
-  const mapTemplate = (uid: string, type: ElementType, fn: (attrs: AttributeDef[]) => AttributeDef[]) =>
+  const mapTemplate = (uid: string, type: string, fn: (attrs: AttributeDef[]) => AttributeDef[]) =>
     mapUniverse(uid, u => ({
       ...u,
       templates: { ...u.templates, [type]: fn(u.templates[type] ?? []) },
       updatedAt: now(),
     }))
 
-  const addAttribute = (uid: string, type: ElementType, attr: Omit<AttributeDef, 'id'>): AttributeDef => {
+  const addAttribute = (uid: string, type: string, attr: Omit<AttributeDef, 'id'>): AttributeDef => {
     const a: AttributeDef = { id: genId(), ...attr }
     mapTemplate(uid, type, list => [...list, a])
     return a
   }
 
-  const updateAttribute = (uid: string, type: ElementType, attrId: string, updates: Partial<Omit<AttributeDef, 'id' | 'required'>>) =>
+  const updateAttribute = (uid: string, type: string, attrId: string, updates: Partial<Omit<AttributeDef, 'id' | 'required'>>) =>
     mapTemplate(uid, type, list => list.map(a => a.id === attrId ? { ...a, ...updates } : a))
 
-  const removeAttribute = (uid: string, type: ElementType, attrId: string) =>
+  const removeAttribute = (uid: string, type: string, attrId: string) =>
     mapTemplate(uid, type, list => list.filter(a => a.id !== attrId || a.required))
 
-  const moveAttribute = (uid: string, type: ElementType, from: number, to: number) =>
+  const moveAttribute = (uid: string, type: string, from: number, to: number) =>
     mapTemplate(uid, type, list => {
       const arr = [...list]
       const [item] = arr.splice(from, 1)
       arr.splice(to, 0, item)
       return arr
+    })
+
+  // --- Catégories personnalisées ---
+  const addCategory = (uid: string, def: Omit<CustomCategoryDef, 'id'>): CustomCategoryDef => {
+    const cat: CustomCategoryDef = { id: genId(), ...def }
+    mapUniverse(uid, u => ({
+      ...u,
+      customCategories: [...u.customCategories, cat],
+      templates: { ...u.templates, [cat.id]: [
+        { id: 'name', name: 'Nom', type: 'text', isDefault: true, required: true },
+        { id: 'image', name: 'Image', type: 'image', isDefault: true },
+        { id: 'description', name: 'Description', type: 'textarea', isDefault: true },
+      ]},
+      elements: { ...u.elements, [cat.id]: [] },
+      updatedAt: now(),
+    }))
+    return cat
+  }
+
+  const updateCategory = (uid: string, categoryId: string, updates: Partial<Omit<CustomCategoryDef, 'id'>>) =>
+    mapUniverse(uid, u => ({
+      ...u,
+      customCategories: u.customCategories.map(c => c.id === categoryId ? { ...c, ...updates } : c),
+      updatedAt: now(),
+    }))
+
+  const deleteCategory = (uid: string, categoryId: string) =>
+    mapUniverse(uid, u => {
+      const { [categoryId]: _t, ...templates } = u.templates
+      const { [categoryId]: _e, ...elements } = u.elements
+      return {
+        ...u,
+        customCategories: u.customCategories.filter(c => c.id !== categoryId),
+        templates,
+        elements,
+        updatedAt: now(),
+      }
+    })
+
+  const overrideBuiltinType = (uid: string, type: ElementType, updates: { label?: string; labelPlural?: string; icon?: string }) =>
+    mapUniverse(uid, u => ({
+      ...u,
+      typeOverrides: {
+        ...u.typeOverrides,
+        [type]: { ...(u.typeOverrides[type] ?? {}), ...updates },
+      },
+      updatedAt: now(),
+    }))
+
+  const disableBuiltinType = (uid: string, type: ElementType) =>
+    mapUniverse(uid, u => {
+      const { [type]: _t, ...templates } = u.templates
+      const { [type]: _e, ...elements } = u.elements
+      return {
+        ...u,
+        disabledTypes: [...u.disabledTypes, type],
+        templates,
+        elements,
+        updatedAt: now(),
+      }
     })
 
   const importData = (d: AppData) => setData(d)
@@ -177,6 +254,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       addChapter, updateChapter, deleteChapter, moveChapter,
       createElement, updateElement, deleteElement,
       addAttribute, updateAttribute, removeAttribute, moveAttribute,
+      addCategory, updateCategory, deleteCategory, disableBuiltinType, overrideBuiltinType,
       importData,
     }}>
       {children}

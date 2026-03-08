@@ -2,7 +2,8 @@ import { Link, Outlet, useNavigate, useParams, useLocation } from 'react-router-
 import { useRef } from 'react'
 import { useStore } from '../store/StoreContext'
 import { exportToZip, importFromZip } from '../utils/zip'
-import { ELEMENT_CONFIG, ELEMENT_TYPES } from '../types'
+import { ELEMENT_CONFIG, getActiveBuiltinTypes } from '../types'
+
 
 export default function Layout() {
   const { id: universeId } = useParams<{ id?: string }>()
@@ -52,13 +53,22 @@ export default function Layout() {
               <Link to={`/universe/${universeId}/stories`} className={`nav-link ${includes('/stor')}`}>
                 📖 Histoires
               </Link>
-              {ELEMENT_TYPES.map(type => (
+              {getActiveBuiltinTypes(universe).map(type => (
                 <Link
                   key={type}
                   to={`/universe/${universeId}/${type}`}
                   className={`nav-link ${includes(`/${type}`)}`}
                 >
                   {ELEMENT_CONFIG[type].icon} {ELEMENT_CONFIG[type].labelPlural}
+                </Link>
+              ))}
+              {universe.customCategories.map(cat => (
+                <Link
+                  key={cat.id}
+                  to={`/universe/${universeId}/${cat.id}`}
+                  className={`nav-link ${includes(`/${cat.id}`)}`}
+                >
+                  {cat.icon} {cat.labelPlural}
                 </Link>
               ))}
               <div className="nav-divider" />

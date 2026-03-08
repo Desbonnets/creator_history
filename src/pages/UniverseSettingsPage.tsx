@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useStore } from '../store/StoreContext'
-import type { ElementType, AttributeType, AttributeDef } from '../types'
-import { ELEMENT_CONFIG, ELEMENT_TYPES } from '../types'
+import type { AttributeType, AttributeDef, ElementType } from '../types'
+import { ELEMENT_CONFIG, ELEMENT_TYPES, getCategoryConfig, getActiveBuiltinTypes } from '../types'
 import ImageUpload from '../components/ImageUpload'
 
 const ATTR_TYPES: { value: AttributeType; label: string }[] = [
@@ -14,11 +14,15 @@ const ATTR_TYPES: { value: AttributeType; label: string }[] = [
   { value: 'image',    label: 'Image' },
 ]
 
-type TabKey = 'general' | ElementType
+type TabKey = 'general' | 'categories' | string
 
 export default function UniverseSettingsPage() {
   const { id: universeId } = useParams<{ id: string }>()
-  const { data, updateUniverse, addAttribute, updateAttribute, removeAttribute, moveAttribute } = useStore()
+  const {
+    data, updateUniverse,
+    addAttribute, updateAttribute, removeAttribute, moveAttribute,
+    addCategory, updateCategory, deleteCategory, disableBuiltinType, overrideBuiltinType,
+  } = useStore()
 
   const universe = data.universes.find(u => u.id === universeId)
 
@@ -33,6 +37,12 @@ export default function UniverseSettingsPage() {
   const [editType, setEditType] = useState<AttributeType>('text')
   const [editOptions, setEditOptions] = useState('')
 
+  // Nouvelle catégorie
+  const [newCat, setNewCat] = useState({ label: '', labelPlural: '', icon: '📁' })
+  // Édition catégorie
+  const [editingCatId, setEditingCatId] = useState<string | null>(null)
+  const [editCat, setEditCat] = useState({ label: '', labelPlural: '', icon: '' })
+
   if (!universe) return <div className="page"><p>Univers introuvable.</p></div>
 
   const handleSaveGeneral = () => {
@@ -41,8 +51,8 @@ export default function UniverseSettingsPage() {
   }
 
   const handleAddAttr = () => {
-    if (!newAttr.name.trim() || activeTab === 'general') return
-    addAttribute(universeId!, activeTab as ElementType, {
+    if (!newAttr.name.trim() || activeTab === 'general' || activeTab === 'categories') return
+    addAttribute(universeId!, activeTab, {
       name: newAttr.name.trim(),
       type: newAttr.type,
       options: newAttr.type === 'select'
@@ -61,8 +71,8 @@ export default function UniverseSettingsPage() {
   }
 
   const handleSaveEdit = (attrId: string) => {
-    if (activeTab === 'general') return
-    updateAttribute(universeId!, activeTab as ElementType, attrId, {
+    if (activeTab === 'general' || activeTab === 'categories') return
+    updateAttribute(universeId!, activeTab, attrId, {
       name: editName.trim() || undefined,
       type: editType,
       options: editType === 'select' ? editOptions.split(',').map(s => s.trim()).filter(Boolean) : undefined,
@@ -70,7 +80,38 @@ export default function UniverseSettingsPage() {
     setEditingId(null)
   }
 
-  const template = activeTab !== 'general' ? (universe.templates[activeTab as ElementType] ?? []) : []
+  const handleAddCategory = () => {
+    if (!newCat.label.trim() || !newCat.labelPlural.trim()) return
+    const cat = addCategory(universeId!, {
+      label: newCat.label.trim(),
+      labelPlural: newCat.labelPlural.trim(),
+      icon: newCat.icon.trim() || '📁',
+    })
+    setNewCat({ label: '', labelPlural: '', icon: '📁' })
+    setActiveTab(cat.id)
+  }
+
+  const handleStartEditCat = (id: string, label: string, labelPlural: string, icon: string) => {
+    setEditingCatId(id)
+    setEditCat({ label, labelPlural, icon })
+  }
+
+  const handleSaveEditCat = () => {
+    if (!editingCatId || !editCat.label.trim() || !editCat.labelPlural.trim()) return
+    updateCategory(universeId!, editingCatId, {
+      label: editCat.label.trim(),
+      labelPlural: editCat.labelPlural.trim(),
+      icon: editCat.icon.trim() || '📁',
+    })
+    setEditingCatId(null)
+  }
+
+  const template = (activeTab !== 'general' && activeTab !== 'categories')
+    ? (universe.templates[activeTab] ?? [])
+    : []
+  const activeConfig = (activeTab !== 'general' && activeTab !== 'categories')
+    ? getCategoryConfig(universe, activeTab)
+    : null
 
   return (
     <div className="page">
@@ -86,19 +127,40 @@ export default function UniverseSettingsPage() {
           >
             🌍 Général
           </button>
-          {ELEMENT_TYPES.map(type => (
+          <button
+            className={`tab-btn ${activeTab === 'categories' ? 'active' : ''}`}
+            onClick={() => setActiveTab('categories')}
+          >
+            🗂️ Catégories
+          </button>
+
+          <div className="tab-group-label">Catégories</div>
+          {getActiveBuiltinTypes(universe).map(type => {
+            const cfg = getCategoryConfig(universe, type)!
+            return (
+              <button
+                key={type}
+                className={`tab-btn ${activeTab === type ? 'active' : ''}`}
+                onClick={() => setActiveTab(type)}
+              >
+                {cfg.icon} {cfg.labelPlural}
+              </button>
+            )
+          })}
+          {universe.customCategories.map(cat => (
             <button
-              key={type}
-              className={`tab-btn ${activeTab === type ? 'active' : ''}`}
-              onClick={() => setActiveTab(type)}
+              key={cat.id}
+              className={`tab-btn ${activeTab === cat.id ? 'active' : ''}`}
+              onClick={() => setActiveTab(cat.id)}
             >
-              {ELEMENT_CONFIG[type].icon} {ELEMENT_CONFIG[type].labelPlural}
+              {cat.icon} {cat.labelPlural}
             </button>
           ))}
         </div>
 
         <div className="settings-content">
-          {activeTab === 'general' ? (
+          {/* === Général === */}
+          {activeTab === 'general' && (
             <div className="form-panel">
               <h2 className="panel-title">Informations générales</h2>
               <div className="form-group">
@@ -114,10 +176,214 @@ export default function UniverseSettingsPage() {
                 💾 Sauvegarder
               </button>
             </div>
-          ) : (
+          )}
+
+          {/* === Gestion des catégories === */}
+          {activeTab === 'categories' && (
+            <div>
+              <h2 className="panel-title">Gérer les catégories</h2>
+              <p className="text-muted text-sm settings-hint">
+                Cliquez sur ✏️ pour configurer les attributs d'une catégorie, sur 🏷️ pour la renommer, ou sur 🗑 pour la supprimer.
+              </p>
+
+              <div className="attr-list">
+                {/* Catégories par défaut actives */}
+                {getActiveBuiltinTypes(universe).map(type => {
+                  const cfg = getCategoryConfig(universe, type)!
+                  return (
+                    <div key={type} className="attr-row">
+                      {editingCatId === type ? (
+                        <div className="attr-edit-form">
+                          <input
+                            value={editCat.icon}
+                            onChange={e => setEditCat(v => ({ ...v, icon: e.target.value }))}
+                            placeholder="Icône (emoji)"
+                            style={{ width: '5rem' }}
+                          />
+                          <input
+                            value={editCat.label}
+                            onChange={e => setEditCat(v => ({ ...v, label: e.target.value }))}
+                            placeholder="Nom singulier"
+                          />
+                          <input
+                            value={editCat.labelPlural}
+                            onChange={e => setEditCat(v => ({ ...v, labelPlural: e.target.value }))}
+                            placeholder="Nom pluriel"
+                          />
+                          <div className="attr-edit-actions">
+                            <button
+                              className="btn-primary-sm"
+                              onClick={() => {
+                                overrideBuiltinType(universeId!, type as ElementType, {
+                                  label: editCat.label.trim() || undefined,
+                                  labelPlural: editCat.labelPlural.trim() || undefined,
+                                  icon: editCat.icon.trim() || undefined,
+                                })
+                                setEditingCatId(null)
+                              }}
+                              disabled={!editCat.label.trim() || !editCat.labelPlural.trim()}
+                            >✓ OK</button>
+                            <button className="btn-secondary-sm" onClick={() => setEditingCatId(null)}>Annuler</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="attr-info">
+                            <span className="attr-name">{cfg.icon} {cfg.labelPlural}</span>
+                            <span className="attr-default-badge">défaut</span>
+                            <span className="text-muted text-sm" style={{ marginLeft: '0.5rem' }}>
+                              {universe.elements[type]?.length ?? 0} élément(s) · {universe.templates[type]?.length ?? 0} attribut(s)
+                            </span>
+                          </div>
+                          <div className="attr-actions">
+                            <button onClick={() => setActiveTab(type)} title="Configurer les attributs">✏️</button>
+                            <button
+                              onClick={() => handleStartEditCat(type, cfg.label, cfg.labelPlural, cfg.icon)}
+                              title="Renommer"
+                            >🏷️</button>
+                            <button
+                              className="danger"
+                              title="Supprimer"
+                              onClick={() => {
+                                const elements = universe.elements[type] ?? []
+                                const attrs = (universe.templates[type] ?? []).filter(a => !a.required)
+                                const lines = [
+                                  `Supprimer la catégorie "${cfg.labelPlural}" ?`,
+                                  '',
+                                  'Ce qui sera supprimé :',
+                                  `  • ${elements.length} élément(s)`,
+                                  `  • ${attrs.length} attribut(s) personnalisé(s)`,
+                                  '',
+                                  'Cette action est irréversible.',
+                                ]
+                                if (confirm(lines.join('\n'))) {
+                                  disableBuiltinType(universeId!, type as ElementType)
+                                  setActiveTab('categories')
+                                }
+                              }}
+                            >🗑</button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )
+                })}
+
+                {/* Catégories personnalisées */}
+                {universe.customCategories.map(cat => (
+                  <div key={cat.id} className="attr-row">
+                    {editingCatId === cat.id ? (
+                      <div className="attr-edit-form">
+                        <input
+                          value={editCat.icon}
+                          onChange={e => setEditCat(v => ({ ...v, icon: e.target.value }))}
+                          placeholder="Icône (emoji)"
+                          style={{ width: '5rem' }}
+                        />
+                        <input
+                          value={editCat.label}
+                          onChange={e => setEditCat(v => ({ ...v, label: e.target.value }))}
+                          placeholder="Nom singulier"
+                        />
+                        <input
+                          value={editCat.labelPlural}
+                          onChange={e => setEditCat(v => ({ ...v, labelPlural: e.target.value }))}
+                          placeholder="Nom pluriel"
+                        />
+                        <div className="attr-edit-actions">
+                          <button
+                            className="btn-primary-sm"
+                            onClick={handleSaveEditCat}
+                            disabled={!editCat.label.trim() || !editCat.labelPlural.trim()}
+                          >✓ OK</button>
+                          <button className="btn-secondary-sm" onClick={() => setEditingCatId(null)}>Annuler</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="attr-info">
+                          <span className="attr-name">{cat.icon} {cat.labelPlural}</span>
+                          <span className="text-muted text-sm" style={{ marginLeft: '0.5rem' }}>
+                            {universe.elements[cat.id]?.length ?? 0} élément(s) · {universe.templates[cat.id]?.length ?? 0} attribut(s)
+                          </span>
+                        </div>
+                        <div className="attr-actions">
+                          <button onClick={() => setActiveTab(cat.id)} title="Configurer les attributs">✏️</button>
+                          <button
+                            onClick={() => handleStartEditCat(cat.id, cat.label, cat.labelPlural, cat.icon)}
+                            title="Renommer"
+                          >🏷️</button>
+                          <button
+                            className="danger"
+                            title="Supprimer"
+                            onClick={() => {
+                              const elements = universe.elements[cat.id] ?? []
+                              const attrs = (universe.templates[cat.id] ?? []).filter(a => !a.required)
+                              const lines = [
+                                `Supprimer la catégorie "${cat.labelPlural}" ?`,
+                                '',
+                                'Ce qui sera supprimé :',
+                                `  • ${elements.length} élément(s)`,
+                                `  • ${attrs.length} attribut(s) personnalisé(s)`,
+                                '',
+                                'Cette action est irréversible.',
+                              ]
+                              if (confirm(lines.join('\n'))) {
+                                deleteCategory(universeId!, cat.id)
+                                setActiveTab('categories')
+                              }
+                            }}
+                          >🗑</button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Formulaire nouvelle catégorie */}
+              <div className="add-attr-form">
+                <h3>Créer une catégorie</h3>
+                <div className="add-attr-fields">
+                  <input
+                    value={newCat.icon}
+                    onChange={e => setNewCat(v => ({ ...v, icon: e.target.value }))}
+                    placeholder="Icône (emoji)"
+                    style={{ width: '6rem' }}
+                  />
+                  <input
+                    value={newCat.label}
+                    onChange={e => setNewCat(v => ({ ...v, label: e.target.value }))}
+                    placeholder="Nom singulier (ex: Dieu)"
+                  />
+                  <input
+                    value={newCat.labelPlural}
+                    onChange={e => setNewCat(v => ({ ...v, labelPlural: e.target.value }))}
+                    placeholder="Nom pluriel (ex: Dieux)"
+                    onKeyDown={e => e.key === 'Enter' && handleAddCategory()}
+                  />
+                  <button
+                    className="btn-primary-sm"
+                    onClick={handleAddCategory}
+                    disabled={!newCat.label.trim() || !newCat.labelPlural.trim()}
+                  >
+                    + Créer
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* === Attributs d'une catégorie === */}
+          {activeTab !== 'general' && activeTab !== 'categories' && activeConfig && (
             <div>
               <h2 className="panel-title">
-                Attributs — {ELEMENT_CONFIG[activeTab as ElementType].labelPlural}
+                Attributs — {activeConfig.labelPlural}
+                {!ELEMENT_TYPES.includes(activeTab as any) && (
+                  <span className="attr-default-badge" style={{ marginLeft: '0.75rem', fontSize: '0.75rem' }}>
+                    personnalisée
+                  </span>
+                )}
               </h2>
               <p className="text-muted text-sm settings-hint">
                 🔒 = attribut requis (ne peut pas être supprimé) · Les attributs par défaut peuvent être modifiés ou supprimés.
@@ -165,12 +431,12 @@ export default function UniverseSettingsPage() {
                         <div className="attr-actions">
                           <button
                             disabled={index === 0}
-                            onClick={() => moveAttribute(universeId!, activeTab as ElementType, index, index - 1)}
+                            onClick={() => moveAttribute(universeId!, activeTab, index, index - 1)}
                             title="Monter"
                           >↑</button>
                           <button
                             disabled={index === template.length - 1}
-                            onClick={() => moveAttribute(universeId!, activeTab as ElementType, index, index + 1)}
+                            onClick={() => moveAttribute(universeId!, activeTab, index, index + 1)}
                             title="Descendre"
                           >↓</button>
                           <button onClick={() => handleStartEdit(attr)} title="Modifier">✏️</button>
@@ -180,7 +446,7 @@ export default function UniverseSettingsPage() {
                               title="Supprimer"
                               onClick={() => {
                                 if (confirm(`Supprimer l'attribut "${attr.name}" ? Les données existantes seront conservées mais non affichées.`))
-                                  removeAttribute(universeId!, activeTab as ElementType, attr.id)
+                                  removeAttribute(universeId!, activeTab, attr.id)
                               }}
                             >🗑</button>
                           )}

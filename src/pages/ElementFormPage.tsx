@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useStore } from '../store/StoreContext'
-import type { ElementType } from '../types'
-import { ELEMENT_CONFIG } from '../types'
+import { getCategoryConfig } from '../types'
 import AttributeField from '../components/AttributeField'
 
 export default function ElementFormPage() {
@@ -11,12 +10,13 @@ export default function ElementFormPage() {
   const navigate = useNavigate()
 
   const universe = data.universes.find(u => u.id === universeId)
-  if (!universe) return <div className="page"><p>Univers introuvable.</p></div>
+  if (!universe || !type) return <div className="page"><p>Univers introuvable.</p></div>
 
-  const elementType = type as ElementType
-  const config = ELEMENT_CONFIG[elementType]
-  const template = universe.templates[elementType] ?? []
-  const existing = elementId ? universe.elements[elementType]?.find(el => el.id === elementId) : undefined
+  const config = getCategoryConfig(universe, type)
+  if (!config) return <div className="page"><p>Catégorie introuvable.</p></div>
+
+  const template = universe.templates[type] ?? []
+  const existing = elementId ? universe.elements[type]?.find(el => el.id === elementId) : undefined
 
   const [values, setValues] = useState<Record<string, string>>(existing?.values ?? {})
 
@@ -25,9 +25,9 @@ export default function ElementFormPage() {
   const handleSave = () => {
     if (!values['name']?.trim()) return
     if (elementId) {
-      updateElement(universeId!, elementType, elementId, values)
+      updateElement(universeId!, type, elementId, values)
     } else {
-      createElement(universeId!, elementType, values)
+      createElement(universeId!, type, values)
     }
     navigate(`/universe/${universeId}/${type}`)
   }

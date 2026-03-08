@@ -1,7 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useStore } from '../store/StoreContext'
-import type { ElementType } from '../types'
-import { ELEMENT_CONFIG } from '../types'
+import { getCategoryConfig } from '../types'
 
 export default function ElementListPage() {
   const { id: universeId, type } = useParams<{ id: string; type: string }>()
@@ -9,11 +8,12 @@ export default function ElementListPage() {
   const navigate = useNavigate()
 
   const universe = data.universes.find(u => u.id === universeId)
-  if (!universe) return <div className="page"><p>Univers introuvable.</p></div>
+  if (!universe || !type) return <div className="page"><p>Univers introuvable.</p></div>
 
-  const elementType = type as ElementType
-  const config = ELEMENT_CONFIG[elementType]
-  const elements = universe.elements[elementType] ?? []
+  const config = getCategoryConfig(universe, type)
+  if (!config) return <div className="page"><p>Catégorie introuvable.</p></div>
+
+  const elements = universe.elements[type] ?? []
 
   return (
     <div className="page">
@@ -47,7 +47,7 @@ export default function ElementListPage() {
                 </div>
                 <button
                   className="card-delete"
-                  onClick={e => { e.stopPropagation(); if (confirm(`Supprimer "${name}" ?`)) deleteElement(universeId!, elementType, el.id) }}
+                  onClick={e => { e.stopPropagation(); if (confirm(`Supprimer "${name}" ?`)) deleteElement(universeId!, type, el.id) }}
                 >🗑</button>
               </div>
             )

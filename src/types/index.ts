@@ -12,6 +12,25 @@ export const ELEMENT_CONFIG: Record<ElementType, { label: string; labelPlural: s
   monster:   { label: 'Monstre',    labelPlural: 'Monstres',    icon: '👹' },
 }
 
+export interface CustomCategoryDef {
+  id: string
+  label: string
+  labelPlural: string
+  icon: string
+}
+
+export function getCategoryConfig(
+  universe: Universe,
+  type: string,
+): { label: string; labelPlural: string; icon: string } | null {
+  if (type in ELEMENT_CONFIG) {
+    const base = ELEMENT_CONFIG[type as ElementType]
+    const ov = universe.typeOverrides?.[type] ?? {}
+    return { ...base, ...ov }
+  }
+  return universe.customCategories.find(c => c.id === type) ?? null
+}
+
 export interface AttributeDef {
   id: string
   name: string
@@ -48,9 +67,9 @@ export interface Story {
 export interface Relation {
   id: string
   sourceId: string
-  sourceType: ElementType
+  sourceType: string
   targetId: string
-  targetType: ElementType
+  targetType: string
   relationType: string
 }
 
@@ -60,11 +79,19 @@ export interface Universe {
   description: string
   image?: string
   stories: Story[]
-  templates: Record<ElementType, AttributeDef[]>
-  elements: Record<ElementType, GenericElement[]>
+  customCategories: CustomCategoryDef[]
+  disabledTypes: string[]          // catégories par défaut désactivées
+  typeOverrides: Record<string, { label?: string; labelPlural?: string; icon?: string }>
+  templates: Record<string, AttributeDef[]>
+  elements: Record<string, GenericElement[]>
   relations: Relation[]
   createdAt: string
   updatedAt: string
+}
+
+/** Retourne les types built-in actifs pour un univers */
+export function getActiveBuiltinTypes(universe: Universe): ElementType[] {
+  return ELEMENT_TYPES.filter(t => !universe.disabledTypes.includes(t))
 }
 
 export interface AppData {

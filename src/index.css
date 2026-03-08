@@ -471,6 +471,15 @@ body {
 .tab-btn:hover { background: var(--bg3); color: var(--text); }
 .tab-btn.active { background: var(--bg3); color: var(--text); font-weight: 600; }
 
+.tab-group-label {
+  padding: 10px 12px 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
 .settings-content { min-width: 0; }
 
 .settings-hint {
