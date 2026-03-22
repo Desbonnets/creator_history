@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useStore } from '../store/StoreContext'
 import type { AttributeType, AttributeDef, ElementType } from '../types'
-import { ELEMENT_CONFIG, ELEMENT_TYPES, getCategoryConfig, getActiveBuiltinTypes } from '../types'
+import { ELEMENT_TYPES, getCategoryConfig, getActiveBuiltinTypes } from '../types'
 import ImageUpload from '../components/ImageUpload'
 
 const ATTR_TYPES: { value: AttributeType; label: string }[] = [
