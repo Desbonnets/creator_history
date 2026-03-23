@@ -8,6 +8,8 @@ import StoriesPage from './pages/StoriesPage'
 import StoryFormPage from './pages/StoryFormPage'
 import ElementListPage from './pages/ElementListPage'
 import ElementFormPage from './pages/ElementFormPage'
+import AdminLoginPage from './pages/AdminLoginPage'
+import AdminPage from './pages/AdminPage'
 
 function App() {
   return (
@@ -25,6 +27,9 @@ function App() {
             <Route path="universe/:id/:type/new" element={<ElementFormPage />} />
             <Route path="universe/:id/:type/:elementId" element={<ElementFormPage />} />
           </Route>
+          {/* Routes admin — sans Layout, accès direct */}
+          <Route path="/admin/login" element={<AdminLoginPage />} />
+          <Route path="/admin" element={<AdminPage />} />
         </Routes>
       </BrowserRouter>
     </StoreProvider>

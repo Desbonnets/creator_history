@@ -1,6 +1,10 @@
 services:
-  # === Développement ===
-  app-dev:
+
+  # ═══════════════════════════════════════
+  # DÉVELOPPEMENT
+  # ═══════════════════════════════════════
+
+  frontend-dev:
     build:
       context: .
       dockerfile: Dockerfile.dev
@@ -8,14 +12,38 @@ services:
       - "5173:5173"
     volumes:
       - .:/app
-      - /app/node_modules  # évite d'écraser node_modules du container
+      - /app/node_modules
     environment:
       - NODE_ENV=development
+    depends_on:
+      - backend-dev
     profiles:
       - dev
 
-  # === Production ===
-  app-prod:
+  backend-dev:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+      - backend_data:/app/data
+      - backend_backups:/app/backups
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - FRONTEND_URL=http://localhost:5173
+      - JWT_SECRET=dev-secret-change-in-prod
+    profiles:
+      - dev
+
+  # ═══════════════════════════════════════
+  # PRODUCTION
+  # ═══════════════════════════════════════
+
+  frontend-prod:
     build:
       context: .
       dockerfile: Dockerfile
@@ -23,5 +51,28 @@ services:
       - "80:80"
     environment:
       - NODE_ENV=production
+    depends_on:
+      - backend-prod
     profiles:
       - prod
+
+  backend-prod:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    expose:
+      - "3001"
+    volumes:
+      - backend_data:/app/data
+      - backend_backups:/app/backups
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - FRONTEND_URL=http://localhost
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET requis en production}
+    profiles:
+      - prod
+
+volumes:
+  backend_data:
+  backend_backups:

@@ -563,3 +563,146 @@ body {
 /* ─── UTILS ──────────────────────────────────────────────── */
 .text-muted { color: var(--muted); }
 .text-sm { font-size: 0.82rem; }
+
+/* ─── ADMIN LOGIN ────────────────────────────────────────── */
+.admin-login-wrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+}
+
+.admin-login-box {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 40px;
+  width: 100%;
+  max-width: 400px;
+}
+
+.admin-login-logo { font-size: 2.5rem; text-align: center; display: block; margin-bottom: 12px; }
+.admin-login-title { font-size: 1.4rem; font-weight: 700; text-align: center; margin-bottom: 4px; }
+.admin-login-subtitle { color: var(--muted); font-size: 0.88rem; text-align: center; margin-bottom: 28px; }
+
+.admin-login-form .form-group { margin-bottom: 16px; }
+
+.admin-error {
+  color: var(--danger);
+  font-size: 0.88rem;
+  margin-bottom: 14px;
+  padding: 8px 12px;
+  background: rgba(248, 81, 73, 0.1);
+  border-radius: 6px;
+  border-left: 3px solid var(--danger);
+}
+
+/* ─── ADMIN PANEL ────────────────────────────────────────── */
+.admin-wrapper {
+  min-height: 100vh;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-header {
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  padding: 16px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.admin-header-left { display: flex; align-items: center; gap: 14px; }
+.admin-header-logo { font-size: 1.8rem; }
+.admin-header-title { font-size: 1.1rem; font-weight: 700; }
+.admin-header-sub { font-size: 0.82rem; color: var(--muted); }
+.admin-header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.admin-body {
+  flex: 1;
+  padding: 28px 32px;
+  max-width: 900px;
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.admin-status {
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+.admin-status.success {
+  background: rgba(63, 185, 80, 0.12);
+  border: 1px solid var(--success);
+  color: var(--success);
+}
+.admin-status.error {
+  background: rgba(248, 81, 73, 0.1);
+  border: 1px solid var(--danger);
+  color: var(--danger);
+}
+
+.admin-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+}
+
+.admin-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.admin-card-title { font-size: 1rem; font-weight: 700; margin-bottom: 8px; }
+.admin-card-desc { font-size: 0.88rem; color: var(--muted); line-height: 1.6; }
+
+.admin-export-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.admin-export-btn { padding: 10px 22px; font-size: 0.95rem; white-space: nowrap; }
+
+.admin-backup-list { display: flex; flex-direction: column; gap: 8px; }
+
+.admin-backup-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  flex-wrap: wrap;
+}
+
+.admin-backup-info { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.admin-backup-name { font-size: 0.88rem; font-weight: 600; font-family: monospace; word-break: break-all; }
+.admin-backup-meta { font-size: 0.78rem; color: var(--muted); }
+.admin-backup-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+.admin-info-card {
+  border-color: rgba(88, 166, 255, 0.2);
+  background: rgba(88, 166, 255, 0.04);
+}
+
+.admin-info-card h3 { font-size: 0.9rem; font-weight: 700; margin-bottom: 12px; color: var(--accent); }
+.admin-info-card ul { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.admin-info-card li { font-size: 0.85rem; color: var(--muted); padding-left: 12px; position: relative; }
+.admin-info-card li::before { content: '·'; position: absolute; left: 0; color: var(--accent); }

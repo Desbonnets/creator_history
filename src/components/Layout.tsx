@@ -85,6 +85,9 @@ export default function Layout() {
           <button className="btn-sidebar" onClick={handleExport}>⬇️ Exporter ZIP</button>
           <button className="btn-sidebar" onClick={() => importRef.current?.click()}>⬆️ Importer ZIP</button>
           <input ref={importRef} type="file" accept=".zip" style={{ display: 'none' }} onChange={handleImport} />
+          <Link to="/admin" className="btn-sidebar" style={{ textDecoration: 'none', textAlign: 'left' }}>
+            🔐 Administration
+          </Link>
         </div>
       </aside>
 
