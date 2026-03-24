@@ -12,10 +12,19 @@ import * as bcrypt from 'bcryptjs'
 const DATA_DIR = path.join(__dirname, '..', 'data')
 const ADMIN_FILE = path.join(DATA_DIR, 'admin.json')
 
-// ─── Credentials initiaux — MODIFIER avant le premier déploiement ─────────────
+// ─── Credentials initiaux lus depuis les variables d'environnement ───────────
+const ADMIN_IDENTIFIER = process.env.ADMIN_IDENTIFIER
+const ADMIN_INITIAL_PASSWORD = process.env.ADMIN_INITIAL_PASSWORD
+
+if (!ADMIN_IDENTIFIER || !ADMIN_INITIAL_PASSWORD) {
+  throw new Error(
+    '[dataloader] ADMIN_IDENTIFIER et ADMIN_INITIAL_PASSWORD doivent être définis dans les variables d\'environnement.'
+  )
+}
+
 const INITIAL_ADMIN = {
-  identifier: 'admin',
-  initialPassword: 'Admin@2024',
+  identifier: ADMIN_IDENTIFIER,
+  initialPassword: ADMIN_INITIAL_PASSWORD,
 }
 // ──────────────────────────────────────────────────────────────────────────────
 
@@ -48,5 +57,12 @@ export async function updateAdminPassword(newPassword: string): Promise<void> {
   const admin = getAdmin()
   if (!admin) throw new Error('Admin introuvable')
   admin.passwordHash = await bcrypt.hash(newPassword, 12)
+  fs.writeFileSync(ADMIN_FILE, JSON.stringify(admin, null, 2), 'utf-8')
+}
+
+export function updateAdminIdentifier(newIdentifier: string): void {
+  const admin = getAdmin()
+  if (!admin) throw new Error('Admin introuvable')
+  admin.identifier = newIdentifier
   fs.writeFileSync(ADMIN_FILE, JSON.stringify(admin, null, 2), 'utf-8')
 }

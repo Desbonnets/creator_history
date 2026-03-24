@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/StoreContext'
-import { getSession, clearSession } from '../admin/session'
+import { getSession, clearSession, setSession } from '../admin/session'
 import { encryptBuffer, decryptBuffer } from '../admin/crypto'
 import {
   apiListBackups,
@@ -9,6 +9,7 @@ import {
   apiDownloadBackup,
   apiDeleteBackup,
   apiUpdatePassword,
+  apiUpdateIdentifier,
   type BackupInfo,
 } from '../admin/api'
 import JSZip from 'jszip'
@@ -24,11 +25,18 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleString('fr-FR')
 }
 
+type MigrationData = {
+  oldPassword: string
+  oldIdentifier: string
+  newPassword: string
+  newIdentifier: string
+}
+
 export default function AdminPage() {
   const navigate = useNavigate()
   const { data, importData } = useStore()
 
-  const session = getSession()
+  const [session] = useState(() => getSession())
 
   useEffect(() => {
     if (!session) navigate('/admin/login', { replace: true })
@@ -43,6 +51,15 @@ export default function AdminPage() {
   const [showPwdForm, setShowPwdForm] = useState(false)
   const [newPwd, setNewPwd] = useState('')
   const [pwdLoading, setPwdLoading] = useState(false)
+
+  // Changement d'identifiant
+  const [showIdentifierForm, setShowIdentifierForm] = useState(false)
+  const [newIdentifier, setNewIdentifier] = useState('')
+  const [identifierLoading, setIdentifierLoading] = useState(false)
+
+  // Migration des backups après changement de credentials
+  const [migrationData, setMigrationData] = useState<MigrationData | null>(null)
+  const [migrationProgress, setMigrationProgress] = useState<string | null>(null)
 
   const notify = (text: string, type: 'success' | 'error' = 'success') => {
     setStatusMsg({ text, type })
@@ -68,18 +85,12 @@ export default function AdminPage() {
     if (!session) return
     setUploading(true)
     try {
-      // 1. Générer le ZIP en mémoire
       const zip = new JSZip()
       zip.file('data.json', JSON.stringify(data, null, 2))
       const zipBuffer = await zip.generateAsync({ type: 'arraybuffer', compression: 'DEFLATE' })
-
-      // 2. Chiffrer avec AES-256-GCM (clé dérivée de password + identifier)
       const encrypted = await encryptBuffer(zipBuffer, session.password, session.identifier)
-
-      // 3. Envoyer au serveur
       const blob = new Blob([encrypted], { type: 'application/octet-stream' })
       const { filename } = await apiUploadBackup(session.token, blob)
-
       notify(`Backup "${filename}" sauvegardé avec succès.`)
       await fetchBackups()
     } catch (err) {
@@ -107,7 +118,7 @@ export default function AdminPage() {
     }
   }
 
-  // ─── Téléchargement local du backup chiffré ──────────────────────────────────
+  // ─── Téléchargement local ────────────────────────────────────────────────────
   const handleDownload = async (filename: string) => {
     if (!session) return
     try {
@@ -130,6 +141,9 @@ export default function AdminPage() {
     if (!session) return
     if (!confirm(`Supprimer le backup "${filename}" ? Cette action est irréversible.`)) return
     try {
+      // Vérifier qu'on peut déchiffrer avant d'autoriser la suppression
+      const encryptedBuffer = await apiDownloadBackup(session.token, filename)
+      await decryptBuffer(encryptedBuffer, session.password, session.identifier)
       await apiDeleteBackup(session.token, filename)
       notify(`Backup "${filename}" supprimé.`)
       await fetchBackups()
@@ -145,16 +159,102 @@ export default function AdminPage() {
     setPwdLoading(true)
     try {
       await apiUpdatePassword(session.token, newPwd)
-      // Mettre à jour la session avec le nouveau mot de passe
-      const { setSession } = await import('../admin/session')
-      setSession({ ...session, password: newPwd })
-      setNewPwd('')
+      const oldPassword = session.password
       setShowPwdForm(false)
-      notify('Mot de passe mis à jour. Reconnectez-vous si nécessaire.')
+      setNewPwd('')
+      if (backups.length > 0) {
+        setMigrationData({
+          oldPassword,
+          oldIdentifier: session.identifier,
+          newPassword: newPwd,
+          newIdentifier: session.identifier,
+        })
+      } else {
+        setSession({ ...session, password: newPwd })
+        notify('Mot de passe mis à jour.')
+      }
     } catch (err) {
       notify((err as Error).message, 'error')
     } finally {
       setPwdLoading(false)
+    }
+  }
+
+  // ─── Changement d'identifiant ────────────────────────────────────────────────
+  const handleIdentifierChange = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!session) return
+    setIdentifierLoading(true)
+    try {
+      await apiUpdateIdentifier(session.token, newIdentifier)
+      const oldIdentifier = session.identifier
+      setShowIdentifierForm(false)
+      setNewIdentifier('')
+      if (backups.length > 0) {
+        setMigrationData({
+          oldPassword: session.password,
+          oldIdentifier,
+          newPassword: session.password,
+          newIdentifier,
+        })
+      } else {
+        setSession({ ...session, identifier: newIdentifier })
+        notify('Identifiant mis à jour.')
+      }
+    } catch (err) {
+      notify((err as Error).message, 'error')
+    } finally {
+      setIdentifierLoading(false)
+    }
+  }
+
+  // ─── Migration : re-chiffrement ──────────────────────────────────────────────
+  const handleMigrationReencrypt = async () => {
+    if (!session || !migrationData) return
+    setMigrationProgress(`Préparation…`)
+    try {
+      for (let i = 0; i < backups.length; i++) {
+        const b = backups[i]
+        setMigrationProgress(`Re-chiffrement ${i + 1}/${backups.length} : ${b.filename}`)
+        const encryptedBuffer = await apiDownloadBackup(session.token, b.filename)
+        const zipBuffer = await decryptBuffer(encryptedBuffer, migrationData.oldPassword, migrationData.oldIdentifier)
+        const newEncrypted = await encryptBuffer(zipBuffer, migrationData.newPassword, migrationData.newIdentifier)
+        await apiDeleteBackup(session.token, b.filename)
+        const blob = new Blob([newEncrypted], { type: 'application/octet-stream' })
+        await apiUploadBackup(session.token, blob)
+      }
+      setSession({ ...session, password: migrationData.newPassword, identifier: migrationData.newIdentifier })
+      setMigrationData(null)
+      setMigrationProgress(null)
+      await fetchBackups()
+      notify('Backups re-chiffrés avec les nouveaux credentials.')
+    } catch (err) {
+      notify((err as Error).message, 'error')
+      setMigrationProgress(null)
+    }
+  }
+
+  // ─── Migration : suppression ─────────────────────────────────────────────────
+  const handleMigrationDelete = async () => {
+    if (!session || !migrationData) return
+    setMigrationProgress('Vérification des backups…')
+    try {
+      for (let i = 0; i < backups.length; i++) {
+        const b = backups[i]
+        setMigrationProgress(`Vérification ${i + 1}/${backups.length} : ${b.filename}`)
+        // Vérifier qu'on peut déchiffrer avec les anciens credentials avant de supprimer
+        const encryptedBuffer = await apiDownloadBackup(session.token, b.filename)
+        await decryptBuffer(encryptedBuffer, migrationData.oldPassword, migrationData.oldIdentifier)
+        await apiDeleteBackup(session.token, b.filename)
+      }
+      setSession({ ...session, password: migrationData.newPassword, identifier: migrationData.newIdentifier })
+      setMigrationData(null)
+      setMigrationProgress(null)
+      await fetchBackups()
+      notify('Backups supprimés. Credentials mis à jour.')
+    } catch (err) {
+      notify((err as Error).message, 'error')
+      setMigrationProgress(null)
     }
   }
 
@@ -178,15 +278,17 @@ export default function AdminPage() {
         </div>
         <div className="admin-header-actions">
           <button className="btn-secondary" onClick={() => navigate('/')}>← Application</button>
-          <button className="btn-secondary" onClick={() => setShowPwdForm(v => !v)}>
-            🔑 Changer le mot de passe
+          <button className="btn-secondary" onClick={() => { setShowPwdForm(v => !v); setShowIdentifierForm(false) }}>
+            🔑 Mot de passe
+          </button>
+          <button className="btn-secondary" onClick={() => { setShowIdentifierForm(v => !v); setShowPwdForm(false) }}>
+            ✏️ Identifiant
           </button>
           <button className="btn-secondary" onClick={handleLogout}>Se déconnecter</button>
         </div>
       </header>
 
       <div className="admin-body">
-        {/* Notification */}
         {statusMsg && (
           <div className={`admin-status ${statusMsg.type}`}>{statusMsg.text}</div>
         )}
@@ -211,6 +313,32 @@ export default function AdminPage() {
                 {pwdLoading ? 'Mise à jour…' : 'Enregistrer'}
               </button>
               <button type="button" className="btn-secondary" onClick={() => setShowPwdForm(false)}>
+                Annuler
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* Changement d'identifiant */}
+        {showIdentifierForm && (
+          <div className="admin-card">
+            <h2 className="admin-card-title">Changer l'identifiant</h2>
+            <form onSubmit={handleIdentifierChange} style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
+              <div className="form-group" style={{ marginBottom: 0, flex: 1 }}>
+                <label className="field-label">Nouvel identifiant (min. 3 caractères)</label>
+                <input
+                  type="text"
+                  value={newIdentifier}
+                  onChange={e => setNewIdentifier(e.target.value)}
+                  minLength={3}
+                  required
+                  disabled={identifierLoading}
+                />
+              </div>
+              <button type="submit" className="btn-primary" disabled={identifierLoading}>
+                {identifierLoading ? 'Mise à jour…' : 'Enregistrer'}
+              </button>
+              <button type="button" className="btn-secondary" onClick={() => setShowIdentifierForm(false)}>
                 Annuler
               </button>
             </form>
@@ -298,6 +426,31 @@ export default function AdminPage() {
           </ul>
         </div>
       </div>
+
+      {/* Modal migration backups */}
+      {migrationData && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <h2>Backups existants détectés</h2>
+            <p style={{ color: 'var(--muted)', marginTop: 12, lineHeight: 1.6 }}>
+              {backups.length} backup(s) sont chiffrés avec les anciens credentials.
+              Ils seront inaccessibles si vous ne les migrez pas.
+            </p>
+            {migrationProgress ? (
+              <p className="text-muted" style={{ marginTop: 20 }}>{migrationProgress}</p>
+            ) : (
+              <div className="modal-actions" style={{ justifyContent: 'flex-start' }}>
+                <button className="btn-primary" onClick={handleMigrationReencrypt}>
+                  Re-chiffrer les backups
+                </button>
+                <button className="btn-danger" onClick={handleMigrationDelete}>
+                  Supprimer les backups
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

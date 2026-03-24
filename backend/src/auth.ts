@@ -1,7 +1,10 @@
 import jwt from 'jsonwebtoken'
 import type { Request, Response, NextFunction } from 'express'
 
-const JWT_SECRET = process.env.JWT_SECRET ?? 'changeme-in-production'
+const JWT_SECRET = process.env.JWT_SECRET
+if (!JWT_SECRET) {
+  throw new Error('[auth] JWT_SECRET doit être défini dans les variables d\'environnement.')
+}
 const JWT_EXPIRES = '12h'
 
 export function signToken(identifier: string): string {

@@ -84,3 +84,12 @@ export async function apiUpdatePassword(token: string, newPassword: string): Pro
   })
   if (!res.ok) await handleError(res)
 }
+
+export async function apiUpdateIdentifier(token: string, newIdentifier: string): Promise<void> {
+  const res = await fetch(`${BASE}/identifier`, {
+    method: 'PUT',
+    headers: { ...authHeader(token), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ newIdentifier }),
+  })
+  if (!res.ok) await handleError(res)
+}

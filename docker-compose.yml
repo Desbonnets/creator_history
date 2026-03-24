@@ -35,7 +35,9 @@ services:
       - NODE_ENV=development
       - PORT=3001
       - FRONTEND_URL=http://localhost:5173
-      - JWT_SECRET=dev-secret-change-in-prod
+      - JWT_SECRET=${JWT_SECRET:-dev-secret-change-in-prod}
+      - ADMIN_IDENTIFIER=${ADMIN_IDENTIFIER:-admin}
+      - ADMIN_INITIAL_PASSWORD=${ADMIN_INITIAL_PASSWORD:-Admin@2024!}
     profiles:
       - dev
 
@@ -68,8 +70,10 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3001
-      - FRONTEND_URL=http://localhost
-      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET requis en production}
+      - FRONTEND_URL=${FRONTEND_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - ADMIN_IDENTIFIER=${ADMIN_IDENTIFIER}
+      - ADMIN_INITIAL_PASSWORD=${ADMIN_INITIAL_PASSWORD}
     profiles:
       - prod
 

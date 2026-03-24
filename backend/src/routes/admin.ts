@@ -3,7 +3,7 @@ import * as bcrypt from 'bcryptjs'
 import multer from 'multer'
 import * as fs from 'fs'
 import * as path from 'path'
-import { getAdmin, updateAdminPassword } from '../dataloader'
+import { getAdmin, updateAdminPassword, updateAdminIdentifier } from '../dataloader'
 import { signToken, requireAuth } from '../auth'
 
 const router = Router()
@@ -116,6 +116,19 @@ router.put('/password', requireAuth, async (req, res) => {
   }
 
   await updateAdminPassword(newPassword)
+  res.json({ ok: true })
+})
+
+// ─── PUT /api/admin/identifier ────────────────────────────────────────────────
+router.put('/identifier', requireAuth, (req, res) => {
+  const { newIdentifier } = req.body as { newIdentifier?: string }
+
+  if (!newIdentifier || newIdentifier.trim().length < 3) {
+    res.status(400).json({ error: 'Identifiant trop court (minimum 3 caractères)' })
+    return
+  }
+
+  updateAdminIdentifier(newIdentifier.trim())
   res.json({ ok: true })
 })
 
