@@ -1,5 +1,5 @@
 import { Link, Outlet, useNavigate, useParams, useLocation } from 'react-router-dom'
-import { useRef } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { useStore } from '../store/StoreContext'
 import { exportToZip, importFromZip } from '../utils/zip'
 import { ELEMENT_CONFIG, getActiveBuiltinTypes } from '../types'
@@ -11,6 +11,10 @@ export default function Layout() {
   const navigate = useNavigate()
   const location = useLocation()
   const importRef = useRef<HTMLInputElement>(null)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  // Ferme le sidebar lors d'un changement de route sur mobile
+  useEffect(() => { setSidebarOpen(false) }, [location.pathname])
 
   const universe = universeId ? data.universes.find(u => u.id === universeId) : undefined
 
@@ -37,7 +41,18 @@ export default function Layout() {
 
   return (
     <div className="layout">
-      <aside className="sidebar">
+      {/* Top bar mobile */}
+      <div className="mobile-topbar">
+        <button className="hamburger" onClick={() => setSidebarOpen(o => !o)} aria-label="Menu">
+          <span /><span /><span />
+        </button>
+        <Link to="/" className="sidebar-logo">📖 WorldBuilder</Link>
+      </div>
+
+      {/* Overlay pour fermer le sidebar sur mobile */}
+      {sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
+
+      <aside className={`sidebar${sidebarOpen ? ' sidebar--open' : ''}`}>
         <div className="sidebar-header">
           <Link to="/" className="sidebar-logo">📖 WorldBuilder</Link>
         </div>
