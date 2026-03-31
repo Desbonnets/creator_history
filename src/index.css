@@ -282,6 +282,17 @@ body {
 
 .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
 
+.confirm-modal { text-align: center; max-width: 420px; }
+.confirm-modal-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 10px; }
+.confirm-modal-message {
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  margin-bottom: 0;
+}
+.confirm-modal .modal-actions { justify-content: center; gap: 12px; }
+
 /* ─── IMAGE UPLOAD ───────────────────────────────────────── */
 .image-upload { margin-bottom: 18px; }
 

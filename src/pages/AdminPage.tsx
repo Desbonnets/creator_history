@@ -14,6 +14,7 @@ import {
 } from '../admin/api'
 import JSZip from 'jszip'
 import type { AppData } from '../types'
+import { useConfirm } from '../components/ConfirmModal'
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} o`
@@ -37,6 +38,7 @@ export default function AdminPage() {
   const { data, importData } = useStore()
 
   const [session] = useState(() => getSession())
+  const { confirm, ConfirmModalElement } = useConfirm()
 
   useEffect(() => {
     if (!session) navigate('/admin/login', { replace: true })
@@ -103,7 +105,7 @@ export default function AdminPage() {
   // ─── Import depuis backup serveur ───────────────────────────────────────────
   const handleImport = async (filename: string) => {
     if (!session) return
-    if (!confirm(`Restaurer le backup "${filename}" ? Les données actuelles seront remplacées.`)) return
+    if (!await confirm('Les données actuelles seront remplacées. Cette action est irréversible.', { title: `Restaurer "${filename}" ?`, confirmLabel: 'Restaurer', danger: false })) return
     try {
       const encryptedBuffer = await apiDownloadBackup(session.token, filename)
       const zipBuffer = await decryptBuffer(encryptedBuffer, session.password, session.identifier)
@@ -139,7 +141,7 @@ export default function AdminPage() {
   // ─── Suppression ────────────────────────────────────────────────────────────
   const handleDelete = async (filename: string) => {
     if (!session) return
-    if (!confirm(`Supprimer le backup "${filename}" ? Cette action est irréversible.`)) return
+    if (!await confirm('Cette action est irréversible.', { title: `Supprimer le backup "${filename}" ?` })) return
     try {
       // Vérifier qu'on peut déchiffrer avant d'autoriser la suppression
       const encryptedBuffer = await apiDownloadBackup(session.token, filename)
@@ -267,6 +269,7 @@ export default function AdminPage() {
 
   return (
     <div className="admin-wrapper">
+      {ConfirmModalElement}
       {/* Header */}
       <header className="admin-header">
         <div className="admin-header-left">

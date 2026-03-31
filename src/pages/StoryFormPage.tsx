@@ -3,6 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useStore } from '../store/StoreContext'
 import ImageUpload from '../components/ImageUpload'
 import RichTextEditor, { type MentionItem } from '../components/RichTextEditor'
+import { useConfirm } from '../components/ConfirmModal'
 import type { Chapter } from '../types'
 import { ELEMENT_CONFIG, getActiveBuiltinTypes } from '../types'
 
@@ -44,6 +45,8 @@ export default function StoryFormPage() {
     return items
   }, [universe])
 
+  const { confirm, ConfirmModalElement } = useConfirm()
+
   if (!universe) return <div className="page"><p>Univers introuvable.</p></div>
 
   const currentStory = universe.stories.find(s => s.id === storyId)
@@ -82,6 +85,7 @@ export default function StoryFormPage() {
 
   return (
     <div className="page story-page">
+      {ConfirmModalElement}
       <div className="page-header">
         <div>
           <button className="btn-back" onClick={() => navigate(`/universe/${universeId}/stories`)}>
@@ -134,8 +138,8 @@ export default function StoryFormPage() {
                   mentionItems={mentionItems}
                   onToggle={() => setActiveChapterId(activeChapterId === chapter.id ? null : chapter.id)}
                   onUpdate={u => updateChapter(universeId!, storyId!, chapter.id, u)}
-                  onDelete={() => {
-                    if (confirm('Supprimer ce chapitre ?')) {
+                  onDelete={async () => {
+                    if (await confirm(`Supprimer le chapitre "${chapter.title || 'Sans titre'}" ?`)) {
                       deleteChapter(universeId!, storyId!, chapter.id)
                       if (activeChapterId === chapter.id) setActiveChapterId(null)
                     }

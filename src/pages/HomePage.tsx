@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/StoreContext'
 import ImageUpload from '../components/ImageUpload'
+import { useConfirm } from '../components/ConfirmModal'
 
 export default function HomePage() {
   const { data, createUniverse, deleteUniverse } = useStore()
@@ -19,9 +20,11 @@ export default function HomePage() {
   }
 
   const handleClose = () => { setName(''); setDescription(''); setImage(undefined); setShowForm(false) }
+  const { confirm, ConfirmModalElement } = useConfirm()
 
   return (
     <div className="page">
+      {ConfirmModalElement}
       <div className="page-header">
         <h1>Mes univers</h1>
         <button className="btn-primary" onClick={() => setShowForm(true)}>+ Nouvel univers</button>
@@ -69,7 +72,7 @@ export default function HomePage() {
               </div>
               <button
                 className="card-delete"
-                onClick={e => { e.stopPropagation(); if (confirm(`Supprimer "${u.name}" ?`)) deleteUniverse(u.id) }}
+                onClick={async e => { e.stopPropagation(); if (await confirm(`Supprimer définitivement l'univers "${u.name}" et tout son contenu ?`)) deleteUniverse(u.id) }}
               >✕</button>
             </div>
           ))}

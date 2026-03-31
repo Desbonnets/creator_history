@@ -4,6 +4,7 @@ import { useStore } from '../store/StoreContext'
 import type { AttributeType, AttributeDef, ElementType } from '../types'
 import { ELEMENT_TYPES, getCategoryConfig, getActiveBuiltinTypes } from '../types'
 import ImageUpload from '../components/ImageUpload'
+import { useConfirm } from '../components/ConfirmModal'
 
 const ATTR_TYPES: { value: AttributeType; label: string }[] = [
   { value: 'text',     label: 'Texte court' },
@@ -42,6 +43,8 @@ export default function UniverseSettingsPage() {
   // Édition catégorie
   const [editingCatId, setEditingCatId] = useState<string | null>(null)
   const [editCat, setEditCat] = useState({ label: '', labelPlural: '', icon: '' })
+
+  const { confirm, ConfirmModalElement } = useConfirm()
 
   if (!universe) return <div className="page"><p>Univers introuvable.</p></div>
 
@@ -115,6 +118,7 @@ export default function UniverseSettingsPage() {
 
   return (
     <div className="page">
+      {ConfirmModalElement}
       <div className="page-header">
         <h1>⚙️ Paramètres de l'univers</h1>
       </div>
@@ -244,19 +248,11 @@ export default function UniverseSettingsPage() {
                             <button
                               className="danger"
                               title="Supprimer"
-                              onClick={() => {
+                              onClick={async () => {
                                 const elements = universe.elements[type] ?? []
                                 const attrs = (universe.templates[type] ?? []).filter(a => !a.required)
-                                const lines = [
-                                  `Supprimer la catégorie "${cfg.labelPlural}" ?`,
-                                  '',
-                                  'Ce qui sera supprimé :',
-                                  `  • ${elements.length} élément(s)`,
-                                  `  • ${attrs.length} attribut(s) personnalisé(s)`,
-                                  '',
-                                  'Cette action est irréversible.',
-                                ]
-                                if (confirm(lines.join('\n'))) {
+                                const msg = `Ce qui sera supprimé :\n  • ${elements.length} élément(s)\n  • ${attrs.length} attribut(s) personnalisé(s)\n\nCette action est irréversible.`
+                                if (await confirm(msg, { title: `Désactiver "${cfg.labelPlural}" ?` })) {
                                   disableBuiltinType(universeId!, type as ElementType)
                                   setActiveTab('categories')
                                 }
@@ -316,19 +312,11 @@ export default function UniverseSettingsPage() {
                           <button
                             className="danger"
                             title="Supprimer"
-                            onClick={() => {
+                            onClick={async () => {
                               const elements = universe.elements[cat.id] ?? []
                               const attrs = (universe.templates[cat.id] ?? []).filter(a => !a.required)
-                              const lines = [
-                                `Supprimer la catégorie "${cat.labelPlural}" ?`,
-                                '',
-                                'Ce qui sera supprimé :',
-                                `  • ${elements.length} élément(s)`,
-                                `  • ${attrs.length} attribut(s) personnalisé(s)`,
-                                '',
-                                'Cette action est irréversible.',
-                              ]
-                              if (confirm(lines.join('\n'))) {
+                              const msg = `Ce qui sera supprimé :\n  • ${elements.length} élément(s)\n  • ${attrs.length} attribut(s) personnalisé(s)\n\nCette action est irréversible.`
+                              if (await confirm(msg, { title: `Supprimer "${cat.labelPlural}" ?` })) {
                                 deleteCategory(universeId!, cat.id)
                                 setActiveTab('categories')
                               }
@@ -444,8 +432,8 @@ export default function UniverseSettingsPage() {
                             <button
                               className="danger"
                               title="Supprimer"
-                              onClick={() => {
-                                if (confirm(`Supprimer l'attribut "${attr.name}" ? Les données existantes seront conservées mais non affichées.`))
+                              onClick={async () => {
+                                if (await confirm(`Les données existantes seront conservées mais non affichées.`, { title: `Supprimer l'attribut "${attr.name}" ?` }))
                                   removeAttribute(universeId!, activeTab, attr.id)
                               }}
                             >✕</button>

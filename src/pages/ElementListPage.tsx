@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useStore } from '../store/StoreContext'
 import { getCategoryConfig } from '../types'
+import { useConfirm } from '../components/ConfirmModal'
 
 export default function ElementListPage() {
   const { id: universeId, type } = useParams<{ id: string; type: string }>()
@@ -8,6 +9,8 @@ export default function ElementListPage() {
   const navigate = useNavigate()
 
   const universe = data.universes.find(u => u.id === universeId)
+  const { confirm, ConfirmModalElement } = useConfirm()
+
   if (!universe || !type) return <div className="page"><p>Univers introuvable.</p></div>
 
   const config = getCategoryConfig(universe, type)
@@ -17,6 +20,7 @@ export default function ElementListPage() {
 
   return (
     <div className="page">
+      {ConfirmModalElement}
       <div className="page-header">
         <h1>{config.icon} {config.labelPlural}</h1>
         <button className="btn-primary" onClick={() => navigate(`/universe/${universeId}/${type}/new`)}>
@@ -47,7 +51,7 @@ export default function ElementListPage() {
                 </div>
                 <button
                   className="card-delete"
-                  onClick={e => { e.stopPropagation(); if (confirm(`Supprimer "${name}" ?`)) deleteElement(universeId!, type, el.id) }}
+                  onClick={async e => { e.stopPropagation(); if (await confirm(`Supprimer "${name}" ?`)) deleteElement(universeId!, type, el.id) }}
                 >✕</button>
               </div>
             )

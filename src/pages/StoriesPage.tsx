@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useStore } from '../store/StoreContext'
+import { useConfirm } from '../components/ConfirmModal'
 
 export default function StoriesPage() {
   const { id } = useParams<{ id: string }>()
@@ -7,10 +8,13 @@ export default function StoriesPage() {
   const navigate = useNavigate()
 
   const universe = data.universes.find(u => u.id === id)
+  const { confirm, ConfirmModalElement } = useConfirm()
+
   if (!universe) return <div className="page"><p>Univers introuvable.</p></div>
 
   return (
     <div className="page">
+      {ConfirmModalElement}
       <div className="page-header">
         <h1>📖 Histoires</h1>
         <button className="btn-primary" onClick={() => navigate(`/universe/${id}/story/new`)}>
@@ -43,7 +47,7 @@ export default function StoriesPage() {
               </div>
               <button
                 className="card-delete"
-                onClick={e => { e.stopPropagation(); if (confirm(`Supprimer "${s.title}" ?`)) deleteStory(id!, s.id) }}
+                onClick={async e => { e.stopPropagation(); if (await confirm(`Supprimer l'histoire "${s.title}" et tous ses chapitres ?`)) deleteStory(id!, s.id) }}
               >✕</button>
             </div>
           ))}
