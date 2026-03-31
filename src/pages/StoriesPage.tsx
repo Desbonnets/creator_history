@@ -44,7 +44,7 @@ export default function StoriesPage() {
               <button
                 className="card-delete"
                 onClick={e => { e.stopPropagation(); if (confirm(`Supprimer "${s.title}" ?`)) deleteStory(id!, s.id) }}
-              >🗑</button>
+              >✕</button>
             </div>
           ))}
         </div>

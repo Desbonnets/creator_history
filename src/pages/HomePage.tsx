@@ -70,7 +70,7 @@ export default function HomePage() {
               <button
                 className="card-delete"
                 onClick={e => { e.stopPropagation(); if (confirm(`Supprimer "${u.name}" ?`)) deleteUniverse(u.id) }}
-              >🗑</button>
+              >✕</button>
             </div>
           ))}
         </div>

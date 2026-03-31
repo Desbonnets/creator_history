@@ -331,12 +331,16 @@ body {
 
 .card-delete {
   position: absolute; top: 8px; right: 8px;
-  background: rgba(0,0,0,0.7);
+  background: rgba(248,81,73,0.85);
   border: none; border-radius: 5px;
-  padding: 4px 8px; cursor: pointer; font-size: 0.85rem;
+  padding: 4px 9px; cursor: pointer; font-size: 0.82rem;
+  color: #fff;
+  line-height: 1;
   opacity: 0; transition: opacity 0.15s;
 }
 .card:hover .card-delete { opacity: 1; }
+/* Toujours visible sur mobile (pas de hover) */
+@media (hover: none) { .card-delete { opacity: 1; } }
 
 /* ─── EMPTY STATE ────────────────────────────────────────── */
 .empty-state { text-align: center; padding: 80px 20px; color: var(--muted); }
@@ -721,6 +725,200 @@ body {
 .admin-info-card ul { list-style: none; display: flex; flex-direction: column; gap: 8px; }
 .admin-info-card li { font-size: 0.85rem; color: var(--muted); padding-left: 12px; position: relative; }
 .admin-info-card li::before { content: '·'; position: absolute; left: 0; color: var(--accent); }
+
+/* ─── RICH TEXT EDITOR ───────────────────────────────────────────── */
+
+.rich-editor {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.rich-editor--fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  border-radius: 0;
+  border: none;
+}
+
+/* Toolbar */
+.editor-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 8px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.editor-tool-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--muted);
+  min-width: 28px; height: 28px;
+  padding: 0 5px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.82rem;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.1s;
+  flex-shrink: 0;
+}
+.editor-tool-btn:hover:not(:disabled) {
+  background: var(--bg3);
+  color: var(--text);
+  border-color: var(--border);
+}
+.editor-tool-btn.active {
+  background: rgba(88,166,255,0.15);
+  color: var(--accent);
+  border-color: rgba(88,166,255,0.3);
+}
+.editor-tool-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+.editor-sep {
+  width: 1px; height: 20px;
+  background: var(--border);
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
+/* Zone d'écriture */
+.editor-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 28px;
+  min-height: 350px;
+}
+.rich-editor--fullscreen .editor-content { min-height: 0; }
+
+.editor-content .ProseMirror {
+  outline: none;
+  font-family: 'Georgia', 'Times New Roman', serif;
+  font-size: 1rem;
+  line-height: 1.85;
+  color: var(--text);
+  min-height: 100%;
+  caret-color: var(--accent);
+}
+
+/* Placeholder */
+.editor-content .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--muted);
+  pointer-events: none;
+  float: left;
+  height: 0;
+}
+
+/* Typographie */
+.editor-content .ProseMirror p { margin-bottom: 1em; }
+
+.editor-content .ProseMirror h1,
+.editor-content .ProseMirror h2,
+.editor-content .ProseMirror h3 {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 700;
+  line-height: 1.3;
+  margin-top: 1.4em;
+  margin-bottom: 0.5em;
+  color: var(--text);
+}
+.editor-content .ProseMirror h1 { font-size: 1.6rem; }
+.editor-content .ProseMirror h2 { font-size: 1.25rem; }
+.editor-content .ProseMirror h3 { font-size: 1.05rem; }
+
+.editor-content .ProseMirror ul,
+.editor-content .ProseMirror ol { padding-left: 1.5em; margin-bottom: 1em; }
+.editor-content .ProseMirror li { margin-bottom: 0.3em; }
+
+.editor-content .ProseMirror blockquote {
+  border-left: 3px solid var(--accent);
+  padding-left: 1.2em;
+  margin: 1.2em 0;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.editor-content .ProseMirror hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 1.5em auto;
+  width: 60%;
+}
+
+.editor-content .ProseMirror strong { font-weight: 700; }
+.editor-content .ProseMirror em { font-style: italic; }
+.editor-content .ProseMirror s { text-decoration: line-through; color: var(--muted); }
+.editor-content .ProseMirror u { text-decoration: underline; }
+
+/* Mention inline */
+.mention {
+  display: inline-block;
+  background: rgba(88,166,255,0.13);
+  color: var(--accent);
+  border-radius: 4px;
+  padding: 0 5px;
+  font-size: 0.9em;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  cursor: default;
+}
+
+/* Popup suggestion mention */
+.mention-popup {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 4px;
+  min-width: 180px;
+  max-width: 260px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+
+.mention-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  padding: 7px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.88rem;
+  text-align: left;
+  transition: background 0.1s;
+}
+.mention-item:hover,
+.mention-item.active { background: var(--bg3); }
+.mention-item-icon { flex-shrink: 0; }
+.mention-empty { color: var(--muted); font-size: 0.85rem; padding: 8px 10px; }
+
+/* Override tippy pour le thème mention */
+.tippy-box[data-theme~='mention'] { background: transparent; border: none; padding: 0; box-shadow: none; }
+.tippy-box[data-theme~='mention'] > .tippy-content { padding: 0; }
+
+/* Pied de page */
+.editor-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 5px 12px;
+  background: var(--bg2);
+  border-top: 1px solid var(--border);
+  font-size: 0.76rem;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.editor-hint { font-style: italic; }
 
 /* ─── RESPONSIVE ─────────────────────────────────────────── */
 

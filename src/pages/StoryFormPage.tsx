@@ -1,25 +1,51 @@
-import { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useMemo, useState } from 'react'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useStore } from '../store/StoreContext'
 import ImageUpload from '../components/ImageUpload'
+import RichTextEditor, { type MentionItem } from '../components/RichTextEditor'
 import type { Chapter } from '../types'
+import { ELEMENT_CONFIG, getActiveBuiltinTypes } from '../types'
+
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]*>/g, ' ')
+}
 
 export default function StoryFormPage() {
   const { id: universeId, storyId } = useParams<{ id: string; storyId: string }>()
   const { data, createStory, updateStory, addChapter, updateChapter, deleteChapter, moveChapter } = useStore()
   const navigate = useNavigate()
+  const location = useLocation()
 
   const universe = data.universes.find(u => u.id === universeId)
   const story = universe?.stories.find(s => s.id === storyId)
 
+  // Récupère l'ID du chapitre à ouvrir passé via l'état de navigation
+  const navState = location.state as { openChapterId?: string } | null
+
   const [title, setTitle] = useState(story?.title ?? '')
   const [description, setDescription] = useState(story?.description ?? '')
   const [image, setImage] = useState<string | undefined>(story?.image)
-  const [activeChapterId, setActiveChapterId] = useState<string | null>(null)
+  const [activeChapterId, setActiveChapterId] = useState<string | null>(navState?.openChapterId ?? null)
+
+  // Construit la liste des éléments de l'univers pour les mentions @
+  const mentionItems = useMemo<MentionItem[]>(() => {
+    if (!universe) return []
+    const items: MentionItem[] = []
+    const types = [
+      ...getActiveBuiltinTypes(universe).map(t => ({ id: t, icon: ELEMENT_CONFIG[t].icon })),
+      ...universe.customCategories.map(c => ({ id: c.id, icon: c.icon })),
+    ]
+    for (const { id: type, icon } of types) {
+      for (const el of universe.elements[type] ?? []) {
+        const name = el.values['name']
+        if (name) items.push({ id: el.id, label: name, icon })
+      }
+    }
+    return items
+  }, [universe])
 
   if (!universe) return <div className="page"><p>Univers introuvable.</p></div>
 
-  // Récupérer l'histoire courante depuis le store (mise à jour en temps réel pour les chapitres)
   const currentStory = universe.stories.find(s => s.id === storyId)
   const chapters = currentStory?.chapters ?? []
 
@@ -34,18 +60,25 @@ export default function StoryFormPage() {
   }
 
   const handleAddChapter = () => {
-    let sid = storyId
-    if (!sid) {
+    if (!storyId) {
+      // Histoire pas encore sauvegardée : on crée la story ET le chapitre,
+      // puis on navigue en passant l'ID du chapitre dans le state pour l'ouvrir
       if (!title.trim()) return
       const s = createStory(universeId!, { title: title.trim(), description: description.trim(), image })
-      sid = s.id
-      navigate(`/universe/${universeId}/story/${s.id}`, { replace: true })
+      const c = addChapter(universeId!, s.id)
+      navigate(`/universe/${universeId}/story/${s.id}`, {
+        replace: true,
+        state: { openChapterId: c.id },
+      })
+      return
     }
-    const c = addChapter(universeId!, sid)
+    const c = addChapter(universeId!, storyId)
     setActiveChapterId(c.id)
   }
 
-  const wordCount = chapters.reduce((acc, c) => acc + c.content.split(/\s+/).filter(Boolean).length, 0)
+  const wordCount = chapters.reduce((acc, c) => {
+    return acc + stripHtml(c.content).split(/\s+/).filter(Boolean).length
+  }, 0)
 
   return (
     <div className="page story-page">
@@ -54,7 +87,7 @@ export default function StoryFormPage() {
           <button className="btn-back" onClick={() => navigate(`/universe/${universeId}/stories`)}>
             ← Histoires
           </button>
-          <h1>{storyId ? title || 'Modifier l\'histoire' : 'Nouvelle histoire'}</h1>
+          <h1>{storyId ? title || "Modifier l'histoire" : 'Nouvelle histoire'}</h1>
           {chapters.length > 0 && (
             <p className="text-muted">{chapters.length} chapitre(s) · {wordCount} mots</p>
           )}
@@ -73,7 +106,7 @@ export default function StoryFormPage() {
           </div>
           <div className="form-group">
             <label className="field-label">Description</label>
-            <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Résumé de l'histoire..." rows={5} />
+            <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Résumé de l'histoire…" rows={5} />
           </div>
           <ImageUpload value={image} onChange={setImage} label="Image de couverture" />
         </div>
@@ -98,6 +131,7 @@ export default function StoryFormPage() {
                   index={index}
                   total={chapters.length}
                   isActive={activeChapterId === chapter.id}
+                  mentionItems={mentionItems}
                   onToggle={() => setActiveChapterId(activeChapterId === chapter.id ? null : chapter.id)}
                   onUpdate={u => updateChapter(universeId!, storyId!, chapter.id, u)}
                   onDelete={() => {
@@ -123,6 +157,7 @@ interface ChapterCardProps {
   index: number
   total: number
   isActive: boolean
+  mentionItems: MentionItem[]
   onToggle(): void
   onUpdate(u: Partial<Chapter>): void
   onDelete(): void
@@ -130,8 +165,8 @@ interface ChapterCardProps {
   onMoveDown(): void
 }
 
-function ChapterCard({ chapter, index, total, isActive, onToggle, onUpdate, onDelete, onMoveUp, onMoveDown }: ChapterCardProps) {
-  const words = chapter.content.split(/\s+/).filter(Boolean).length
+function ChapterCard({ chapter, index, total, isActive, mentionItems, onToggle, onUpdate, onDelete, onMoveUp, onMoveDown }: ChapterCardProps) {
+  const words = stripHtml(chapter.content).split(/\s+/).filter(Boolean).length
 
   return (
     <div className={`chapter-card ${isActive ? 'active' : ''}`}>
@@ -157,12 +192,11 @@ function ChapterCard({ chapter, index, total, isActive, onToggle, onUpdate, onDe
           </div>
           <div className="form-group">
             <label className="field-label">Contenu</label>
-            <textarea
-              value={chapter.content}
-              onChange={e => onUpdate({ content: e.target.value })}
-              placeholder="Écrivez votre chapitre ici..."
-              rows={20}
-              className="writing-area"
+            <RichTextEditor
+              content={chapter.content}
+              onChange={html => onUpdate({ content: html })}
+              placeholder="Écrivez votre chapitre ici…"
+              mentionItems={mentionItems}
             />
           </div>
         </div>

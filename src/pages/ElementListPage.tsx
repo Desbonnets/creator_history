@@ -48,7 +48,7 @@ export default function ElementListPage() {
                 <button
                   className="card-delete"
                   onClick={e => { e.stopPropagation(); if (confirm(`Supprimer "${name}" ?`)) deleteElement(universeId!, type, el.id) }}
-                >🗑</button>
+                >✕</button>
               </div>
             )
           })}
