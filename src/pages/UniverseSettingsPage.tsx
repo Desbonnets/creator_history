@@ -183,7 +183,7 @@ export default function UniverseSettingsPage() {
             <div>
               <h2 className="panel-title">Gérer les catégories</h2>
               <p className="text-muted text-sm settings-hint">
-                Cliquez sur ✏️ pour configurer les attributs d'une catégorie, sur 🏷️ pour la renommer, ou sur 🗑 pour la supprimer.
+                Cliquez sur ✏️ pour configurer les attributs d'une catégorie, sur 🏷️ pour la renommer, ou sur ✕ pour la supprimer.
               </p>
 
               <div className="attr-list">
@@ -261,7 +261,7 @@ export default function UniverseSettingsPage() {
                                   setActiveTab('categories')
                                 }
                               }}
-                            >🗑</button>
+                            >✕</button>
                           </div>
                         </>
                       )}
@@ -333,7 +333,7 @@ export default function UniverseSettingsPage() {
                                 setActiveTab('categories')
                               }
                             }}
-                          >🗑</button>
+                          >✕</button>
                         </div>
                       </>
                     )}
@@ -448,7 +448,7 @@ export default function UniverseSettingsPage() {
                                 if (confirm(`Supprimer l'attribut "${attr.name}" ? Les données existantes seront conservées mais non affichées.`))
                                   removeAttribute(universeId!, activeTab, attr.id)
                               }}
-                            >🗑</button>
+                            >✕</button>
                           )}
                         </div>
                       </>

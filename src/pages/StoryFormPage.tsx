@@ -179,7 +179,7 @@ function ChapterCard({ chapter, index, total, isActive, mentionItems, onToggle, 
         <div className="chapter-controls" onClick={e => e.stopPropagation()}>
           <button disabled={index === 0} onClick={onMoveUp} title="Monter">↑</button>
           <button disabled={index === total - 1} onClick={onMoveDown} title="Descendre">↓</button>
-          <button onClick={onDelete} className="danger" title="Supprimer">🗑</button>
+          <button onClick={onDelete} className="danger" title="Supprimer">✕</button>
           <span className="chapter-toggle">{isActive ? '▲' : '▼'}</span>
         </div>
       </div>

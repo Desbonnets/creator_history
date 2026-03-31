@@ -406,7 +406,7 @@ export default function AdminPage() {
                       title="Supprimer ce backup"
                       onClick={() => handleDelete(b.filename)}
                     >
-                      🗑
+                      ✕
                     </button>
                   </div>
                 </div>
